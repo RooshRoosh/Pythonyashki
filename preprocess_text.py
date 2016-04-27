@@ -37,9 +37,9 @@ number_group = {
 def clear_text(raw_text):
     minus_html_regexp = re.compile('(<[^>]+>?)')
     minus_punctuation = re.compile(r'[!\?,\.\\:;~\+\*={}\^_`\|\$]', re.UNICODE)
-    replace_http = re.compile(' http.+? ')
+    minus_http = re.compile('https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
 
-    text = re.sub(replace_http, ' URL ', raw_text)
+    text = re.sub(minus_http, ' URL ', raw_text)
     text = re.sub(minus_html_regexp, ' ', text)
     text = re.sub(minus_punctuation, ' ', text)
 
@@ -70,6 +70,54 @@ def clear_text(raw_text):
 
     return _text
 
+def text_to_sentence(raw_text):
+    # Разбиваем текст на предложения
+    def gen_sentence(text):
+        i=0
+        while i<len(text):
+            if text[i] in ('.', '!', '?') and (text[i+1] in [' ','\n'] or text[i]==text[-1]) and (text[i-1]!='/'):
+                yield text[:i+1]
+                text = text[i+1:]
+                i = 0
+            i+=1
+        yield text
+
+    minus_html_regexp = re.compile('(<[^>]+>?)')
+    minus_punctuation = re.compile(r'[!\/\?,\.\\:;\~\+\*={}\^_`\|\$]', re.UNICODE)
+    minus_http = re.compile('https?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+')
+
+    for text in gen_sentence(raw_text):
+        text = re.sub(minus_http, ' URL ', text)
+        text = re.sub(minus_html_regexp, ' ', text)
+        text = re.sub(minus_punctuation, ' ', text)
+
+
+        text = text.upper().split()
+
+        i = 0
+        _text = []
+        text_append = _text.append
+        while i<len(text):
+            word = text[i]
+            if word.isdigit():
+                word_digit = int(word)
+                for key in number_group.keys():
+                    if key[0] < word_digit <= key[1]:
+                        word = number_group[key]
+                        break
+
+            elif word == 'НЕ':
+                word = word+'_'+text[i+1]
+                i += 1
+
+            elif len(word) >= 18:
+                word = 'LONG_WORD'
+
+            i+=1
+            text_append(word)
+
+        if _text:
+            yield _text
 
 if __name__ == "__main__":
     t = 'занимаюсь изготовлением и продажей чипсов! '+\
@@ -77,7 +125,9 @@ if __name__ == "__main__":
     'хрустящие золотистые!!!картофельзакончился,' +\
     'купил в том же месте !?? но чипсы уже не те! '+\
     'то мягкие , то теряют :форму! в общем проблема! '+\
-        'http://youtube.com/? ' +\
+    'вот тут http://youtube.com/? всё показано. ' +\
     'нужно её решить! думаю ;что дело в картофеле! '+\
     '\nпомогите, если знаете ~как!?{?}'
+    print([i for i in text_to_sentence(t)])
+
     print(clear_text(t))
