@@ -29,10 +29,9 @@ def multiplex(*source_list):
 
     # run
     yield heapq.heappop(h)
-    for elements in itertools.izip_longest(*source_list):
-        for element in elements:
-            if not element is None:
-                yield heapq.heappushpop(h, element)
+    for elements in itertools.zip_longest(*source_list):
+        for element in (element for element in elements if element is not None):
+            yield heapq.heappushpop(h, element)
 
     # finish
     while h:
